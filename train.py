@@ -106,7 +106,7 @@ train_num=50000
 valid_num=10000
 test_num=10000
 
-dataset_path=Path('D:/pj')
+dataset_path=Path('D:/hw1')
 train_img_path=dataset_path/'train-images.idx3-ubyte'
 train_lab_path=dataset_path/'train-labels.idx1-ubyte'
 test_img_path=dataset_path/'t10k-images.idx3-ubyte'
@@ -192,12 +192,13 @@ def combine_parameters(parameters,grad,learn_rate):
 
 
 if __name__ == '__main__':
-    grid_accu = [0]
+    grid_accu = [-1]
     for grid_i in range(2):
+        print(f'载入第{grid_i+1}组超参')
         ll = grid['L2'][grid_i]
         hidden_dim = grid['hidden_dims'][grid_i]
         lr = grid['lr'][grid_i]
-        dimensions = [28 * 28, hidden_dim, 10]  # 各层的维度
+        dimensions = [784, hidden_dim, 10]
         # 初始化参数
         parameters = init_parameters()
         current_epoch = 0
@@ -205,46 +206,51 @@ if __name__ == '__main__':
         valid_loss_list = []
         train_accu_list = []
         valid_accu_list = []
+
         # 训练
         learn_rate = lr
-        # learn_rate=1
         epoch_num = 15
         for epoch_ in range(epoch_num):
             for i in range(train_num // batch_size):
-                if i % 100 == 99:
-                    print('epoch {}/{}'.format(current_epoch, train_num // batch_size))
                 grad_tmp = train_batch(i, parameters,ll)
                 parameters = combine_parameters(parameters, grad_tmp, learn_rate)
             current_epoch += 1
-            train_loss_list.append(train_loss(parameters,ll))
-            train_accu_list.append(train_accuracy(parameters))
-            valid_loss_list.append(valid_loss(parameters,ll))
-            valid_accu_list.append(valid_accuracy(parameters))
+            tl = train_loss(parameters,ll)
+            ta = train_accuracy(parameters)
+            vl = valid_loss(parameters,ll)
+            va = valid_accuracy(parameters)
+            train_loss_list.append(tl)
+            train_accu_list.append(ta)
+            valid_loss_list.append(vl)
+            valid_accu_list.append(va)
+            print(f'当前epoch{current_epoch}/{epoch_num}, 训练损失：{tl}, 验证损失：{vl}, 训练准确率：{ta}, 验证准确率：{va}')
 
         # 验证集准确率
         accu = valid_accuracy(parameters)
 
 
-        # 损失准确率可视化
-        plt.plot(valid_accu_list, c='g', label='validation acc')
+        # 损失准确率曲线
+        fig = plt.figure(figsize=(12, 4), dpi=100)
+        ax1 = fig.add_subplot(1, 2, 1)
+        plt.plot(valid_accu_list, c='r', label='val acc')
         plt.plot(train_accu_list, c='b', label='train acc')
         plt.legend()
-        plt.savefig(f'./grid_{grid_i}_accu_valid.png')
 
-        plt.plot(valid_loss_list, c='g', label='validation loss')
+        ax2 = fig.add_subplot(1,2,2)
+        plt.plot(valid_loss_list, c='r', label='val loss')
         plt.plot(train_loss_list, c='b', label='train loss')
         plt.legend()
-        plt.savefig(f'./grid_{grid_i})_train_loss')
+        plt.savefig(f'./grid_{grid_i})_acc_loss')
 
 
 
         import pickle
 
-        # 保存模型
-        if accu > grid_accu[-1]:
-            model_prameters_name = './Mnist_model.pkl'
+        # 在多组超参中选取验证结果最好的模型保存
+        if accu > max(grid_accu):
+            model_prameters_name = './best_model.pkl'
             f = open(model_prameters_name, 'wb')
             pickle.dump(parameters, f)
             f.close()
         grid_accu.append(accu)
-    print(grid_accu)
+    print(f'各组超参的验证集准确率为{grid_accu}')
